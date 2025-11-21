@@ -27,3 +27,8 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Java
+target
+*.iml
+*.class
