@@ -10,17 +10,20 @@ import { DefaultAzureCredential, getBearerTokenProvider } from "@azure/identity"
 async function main(): Promise<void> {
     console.log("Claude Sonnet 4.5 - Responses API with EntraID\n");
     
+    const baseUrl = process.env.FOUNDRY_ENDPOINT;
+    if (!baseUrl) {
+        throw new Error("Please set the FOUNDRY_ENDPOINT environment variable to your Microsoft Foundry project endpoint.");
+    }
+
     // Use DefaultAzureCredential for EntraID authentication
     // This automatically uses your Azure CLI login, Managed Identity, or other credential sources
     const credential = new DefaultAzureCredential();
     const scope = "https://ai.azure.com/.default";
     const tokenProvider = getBearerTokenProvider(credential, scope);
 
-    const baseUrl = "https://YOUR-RESOURCE-NAME.services.ai.azure.com/api/projects/YOUR-PROJECT-NAME/openai";
-    
-    // Initialize OpenAI client with Azure AI Foundry endpoint
+    // Initialize OpenAI client with Microsoft Foundry endpoint
     const client = new OpenAI({
-        baseURL: baseUrl,
+        baseURL: process.env.FOUNDRY_ENDPOINT,
         apiKey: await tokenProvider(),
         defaultQuery: { "api-version": "2025-11-15-preview" }
     });

@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Node.js 18+
+- Node.js 22+
 - Azure CLI (logged in)
 
 ## Setup
@@ -10,6 +10,12 @@
 ```bash
 # Install dependencies
 npm install
+```
+
+Create a `.env` file in this directory with the following content:
+
+```
+FOUNDRY_ENDPOINT="https://YOUR-RESOURCE-NAME.services.ai.azure.com/api/projects/YOUR-PROJECT-NAME/openai"
 ```
 
 ## Run
