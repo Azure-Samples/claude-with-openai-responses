@@ -1,6 +1,6 @@
 # Java - Claude Sonnet 4.5 Example
 
-This demonstrates using the OpenAI Responses API with Claude models hosted in Microsoft Foundry using Azure Entra ID authentication.
+This demonstrates using the OpenAI Responses API with Claude models hosted in Microsoft Foundry using Azure Entra ID authentication using the OpenAI SDK.
 
 ## Prerequisites
 
@@ -66,5 +66,5 @@ mvn clean compile exec:java
 
 ## Files
 
-- `ClaudeResponsesExample.java` - Main Java code with direct HTTP and Azure Entra ID authentication
+- `ClaudeResponsesExample.java` - Main Java code using OpenAI SDK and Azure Entra ID authentication
 - `pom.xml` - Maven project configuration and dependencies
