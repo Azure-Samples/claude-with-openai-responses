@@ -49,7 +49,7 @@ Choose your preferred language:
 - [Python](#python) - Full OpenAI SDK support
 - [TypeScript](#typescript) - Full OpenAI SDK support
 - [Go](#go) - OpenAI SDK with custom middleware
-- [Java](#java) - Direct HTTP implementation
+- [Java](#java) - Full OpenAI SDK support
 - [C#](#csharp) - OpenAI SDK with custom pipeline policy
 
 ---
@@ -337,29 +337,21 @@ go run main.go
 <details id="java">
 <summary><h3>☕ Java</h3></summary>
 
-**Status**: ⚠️ Code pattern correct, uses direct HTTP calls
+**Status**: ✅ Fully tested and working with OpenAI SDK
 
 #### Prerequisites
 - **Java 17+** installed
 - **Maven** for dependency management
 - **Dependencies**:
-  - `azure-identity` (v1.15.1) - Azure authentication library
-  - `okhttp` (v4.12.0) - HTTP client (for direct API calls)
-  - `jackson-databind` (v2.18.2) - JSON parsing
+  - `azure-identity` (v1.18.1) - Azure authentication library
+  - `openai-java` (v4.8.0) - OpenAI Java SDK with OkHttp client
 
 #### Implementation Approach
-⚠️ **Direct HTTP Calls Required** - The OpenAI Java SDK's Responses API has compatibility issues with Microsoft Foundry:
-- Uses OkHttp to make direct OpenAI Responses API calls to Foundry endpoints
-- Manually constructs the Foundry endpoint URL with required `api-version` query parameter
-- Manually adds `Authorization: Bearer <token>` header for EntraID authentication
-- Manually formats the OpenAI Responses API request body and parses JSON responses
-
-**Why Direct HTTP?**
-- OpenAI Java SDK (v4.8.0) supports `putAdditionalQueryParam()` for query parameters and Azure credentials
-- However, when used with Microsoft Foundry's Responses API, the SDK returns 404 errors
-- This appears to be an SDK compatibility issue with Microsoft Foundry's endpoint structure
-- Direct HTTP works reliably as a workaround until the SDK issue is resolved
-- See [Issue #4](https://github.com/Azure-Samples/claude-with-openai-responses/issues/4) for details
+✅ **Full OpenAI SDK Support** - Java has first-class support for calling the OpenAI Responses API with Microsoft Foundry endpoints:
+- Uses `AuthenticationUtil.getBearerTokenSupplier` for EntraID authentication
+- Pass bearer token credential to the OpenAI client configured with Foundry endpoint
+- SDK handles the OpenAI Responses API protocol and token refresh automatically
+- Uses `putQueryParam` to add required `api-version` parameter
 
 #### Installation
 
@@ -374,6 +366,7 @@ Update the endpoint in `src/main/java/com/azure/claude/starter/ClaudeResponsesEx
 
 ```java
 String baseUrl = "https://YOUR-RESOURCE-NAME.services.ai.azure.com/api/projects/YOUR-PROJECT-NAME/openai";
+String apiVersion = "2025-11-15-preview";
 String model = "claude-sonnet-4-5";  // Your Claude deployment name
 ```
 
@@ -382,72 +375,50 @@ String model = "claude-sonnet-4-5";  // Your Claude deployment name
 ```java
 package com.azure.claude.starter;
 
-import com.azure.core.credential.TokenRequestContext;
+import com.azure.identity.AuthenticationUtil;
 import com.azure.identity.DefaultAzureCredentialBuilder;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import okhttp3.*;
+import com.openai.client.OpenAIClient;
+import com.openai.client.okhttp.OpenAIOkHttpClient;
+import com.openai.credential.BearerTokenCredential;
+import com.openai.models.ResponsesModel;
+import com.openai.models.responses.Response;
+import com.openai.models.responses.ResponseCreateParams;
 
-import java.io.IOException;
+import java.util.function.Supplier;
 
 public class ClaudeResponsesExample {
-    public static void main(String[] args) throws IOException {
-        System.out.println("Claude Sonnet 4.5 - Responses API with EntraID\n");
+    public static void main(String[] args) {
+        System.out.println("Claude Sonnet 4.5 - Responses API with EntraID");
 
         // Get Azure token using DefaultAzureCredential
         var azureCredential = new DefaultAzureCredentialBuilder().build();
-        var tokenContext = new TokenRequestContext().addScopes("https://ai.azure.com/.default");
-        var azureToken = azureCredential.getTokenSync(tokenContext);
 
         // Foundry endpoint configuration
         String baseUrl = "https://YOUR-RESOURCE-NAME.services.ai.azure.com/api/projects/YOUR-PROJECT-NAME/openai";
         String apiVersion = "2025-11-15-preview";
         String model = "claude-sonnet-4-5";
 
-        // Build request body
-        String requestBody = String.format("""
-                {
-                    "model": "%s",
-                    "input": "Write a one-sentence bedtime story about a unicorn.",
-                    "max_output_tokens": 1000
-                }
-                """, model);
+        Supplier<String> bearerTokenSupplier = AuthenticationUtil.getBearerTokenSupplier(
+            azureCredential, 
+            "https://ai.azure.com/.default"
+        );
 
-        // Create HTTP request
-        OkHttpClient client = new OkHttpClient();
-        Request request = new Request.Builder()
-                .url(baseUrl + "/responses?api-version=" + apiVersion)
-                .addHeader("Authorization", "Bearer " + azureToken.getToken())
-                .addHeader("Content-Type", "application/json")
-                .post(RequestBody.create(requestBody, MediaType.get("application/json")))
+        OpenAIClient client = OpenAIOkHttpClient.builder()
+                .baseUrl(baseUrl)
+                .credential(BearerTokenCredential.create(bearerTokenSupplier))
+                .putQueryParam("api-version", apiVersion)
                 .build();
 
-        // Execute request and parse response
-        try (okhttp3.Response response = client.newCall(request).execute()) {
-            if (!response.isSuccessful()) {
-                throw new IOException("Request failed: " + response.code() + " " + response.message());
-            }
+        ResponseCreateParams responseCreateParams = ResponseCreateParams.builder()
+                .model(ResponsesModel.ofString(model))
+                .input(ResponseCreateParams.Input.ofText("Explain quantum computing in simple terms"))
+                .maxOutputTokens(1000)
+                .build();
 
-            ObjectMapper mapper = new ObjectMapper();
-            JsonNode jsonResponse = mapper.readTree(response.body().string());
+        Response response = client.responses().create(responseCreateParams);
 
-            System.out.println("Response from model: " + jsonResponse.get("model").asText() + ":\n");
-
-            // Extract and display output text
-            JsonNode output = jsonResponse.get("output");
-            if (output != null && output.isArray()) {
-                for (JsonNode item : output) {
-                    JsonNode content = item.get("content");
-                    if (content != null && content.isArray()) {
-                        for (JsonNode contentItem : content) {
-                            if (contentItem.has("text")) {
-                                System.out.println(contentItem.get("text").asText());
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        System.out.println("Response from model: " + model);
+        System.out.println(response.output());
     }
 }
 ```
@@ -459,10 +430,10 @@ mvn clean compile exec:java
 ```
 
 #### Key Features
-- Uses Azure DefaultAzureCredential for EntraID authentication
-- Direct HTTP implementation for full control
-- OkHttp for reliable HTTP client functionality
-- Jackson for JSON parsing
+- Uses Azure DefaultAzureCredential for automatic EntraID authentication
+- OpenAI SDK natively supports bearer token credentials
+- Type-safe API with builder patterns
+- Automatic token refresh handled by SDK
 
 </details>
 
