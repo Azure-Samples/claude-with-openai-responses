@@ -2,6 +2,7 @@ package com.azure.claude.starter;
 
 import com.azure.identity.AuthenticationUtil;
 import com.azure.identity.DefaultAzureCredentialBuilder;
+import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.azure.AzureUrlPathMode;
 import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
@@ -39,10 +40,12 @@ public class ClaudeResponsesExample {
         System.out.println("Claude Sonnet 4.5 - Responses API with EntraID");
 
         // Get Azure token using DefaultAzureCredential
-        var azureCredential = new DefaultAzureCredentialBuilder().build();
+        var azureCredential = new DefaultAzureCredentialBuilder()
+                .tenantId("db9be3ca-997b-41d0-833d-77758c24615c")
+                .build();
 
         // Foundry endpoint configuration
-        String baseUrl = "https://YOUR-RESOURCE-NAME.services.ai.azure.com/api/projects/YOUR-PROJECT-NAME/openai";
+        String baseUrl = "https://rcarun-live-foundry-2-res.services.ai.azure.com/api/projects/rcarun-live-foundry-2-prj/openai";
         String apiVersion = "2025-11-15-preview";
         String model = "claude-sonnet-4-5";
 
@@ -64,7 +67,7 @@ public class ClaudeResponsesExample {
 
         Response response = client.responses().create(responseCreateParams);
 
-        System.out.println("Response from model: " + model);
+        System.out.println("Response from model: " + response.model().asString());
         System.out.println(response.output());
     }
 }
