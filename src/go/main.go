@@ -16,6 +16,7 @@ import (
 
 func main() {
 	fmt.Println("Claude Sonnet 4.5 - Responses API with EntraID")
+	fmt.Println()
 
 	baseURL := "https://YOUR-RESOURCE-NAME.services.ai.azure.com/api/projects/YOUR-PROJECT-NAME/openai"
 
