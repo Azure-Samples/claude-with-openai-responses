@@ -11,6 +11,9 @@
 # Create virtual environment
 python -m venv .venv
 
+# Linux shell (Bash, ZSH, etc.), WSL or macOS only
+source .venv/bin/activate
+
 # Activate virtual environment (Windows)
 .\.venv\Scripts\Activate.ps1
 

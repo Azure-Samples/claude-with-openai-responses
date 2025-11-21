@@ -1,6 +1,6 @@
 from openai import OpenAI
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
-import os;
+
 
 token_provider = get_bearer_token_provider(DefaultAzureCredential(), "https://ai.azure.com/.default")
 
