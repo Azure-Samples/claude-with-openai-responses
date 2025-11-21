@@ -2,6 +2,7 @@ package com.azure.claude.starter;
 
 import com.azure.identity.AuthenticationUtil;
 import com.azure.identity.DefaultAzureCredentialBuilder;
+import com.openai.azure.AzureUrlPathMode;
 import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.credential.BearerTokenCredential;
@@ -52,6 +53,7 @@ public class ClaudeResponsesExample {
                 // Set the Azure Entra ID
                 .credential(BearerTokenCredential.create(bearerTokenSupplier))
                 .putQueryParam("api-version", apiVersion)
+                .azureUrlPathMode(AzureUrlPathMode.UNIFIED)
                 .build();
 
         ResponseCreateParams responseCreateParams = ResponseCreateParams.builder()
