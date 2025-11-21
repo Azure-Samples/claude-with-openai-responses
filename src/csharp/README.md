@@ -5,6 +5,15 @@
 - .NET 8.0+
 - Azure CLI (logged in)
 
+## Implementation Details
+
+This example uses:
+- **BearerTokenPolicy** from Azure.Identity for authentication with DefaultAzureCredential
+- **ApiVersionPipelinePolicy** - Custom pipeline policy to inject the api-version query parameter
+- **OpenAI SDK** - Native .NET SDK for type-safe API access
+
+The implementation separates concerns with dedicated policies for authentication and API versioning, making it clean and maintainable.
+
 ## Run
 
 ```bash
@@ -18,7 +27,7 @@ dotnet run
 
 ## Files
 
-- `claude-openai-responses.cs` - Main C# code with EntraID authentication
+- `claude-openai-responses.cs` - Main C# code with EntraID authentication using BearerTokenPolicy and custom ApiVersionPipelinePolicy
 
 ## Note
 
