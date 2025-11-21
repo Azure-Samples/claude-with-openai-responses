@@ -211,7 +211,7 @@ npm start
 **Status**: ✅ Fully tested and working with middleware pattern
 
 #### Prerequisites
-- **Go 1.22+** installed
+- **Go 1.24+** installed
 - **Dependencies**:
   - `github.com/openai/openai-go/v3` - OpenAI Go SDK
   - `github.com/Azure/azure-sdk-for-go/sdk/azidentity` - Azure authentication
@@ -222,13 +222,6 @@ npm start
 - Implements custom middleware to inject Azure bearer token for Foundry authentication
 - Uses `runtime.NewBearerTokenPolicy` from Azure SDK
 - OpenAI Go SDK client configured with Foundry endpoint calls the Responses API with middleware
-
-#### Installation
-
-```bash
-cd src/go
-go mod tidy
-```
 
 #### Configuration
 
@@ -245,83 +238,90 @@ model := "claude-sonnet-4-5"  // Your Claude deployment name
 package main
 
 import (
-    "context"
-    "fmt"
-    "log"
-    "net/http"
+	"context"
+	"fmt"
+	"log"
+	"net/http"
 
-    "github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
-    "github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
-    "github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-    "github.com/openai/openai-go/v3"
-    "github.com/openai/openai-go/v3/option"
-    "github.com/openai/openai-go/v3/responses"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/option"
+	"github.com/openai/openai-go/v3/responses"
 )
+
+func main() {
+	fmt.Println("Claude Sonnet 4.5 - Responses API with EntraID")
+    fmt.Println()
+
+	baseURL := "https://YOUR-RESOURCE-NAME.services.ai.azure.com/api/projects/YOUR-PROJECT-NAME/openai"
+
+	client := newClientUsingEntraAuthentication(baseURL)
+
+	// Create response using Claude model
+	resp, err := client.Responses.New(context.TODO(), responses.ResponseNewParams{
+		Model: "claude-sonnet-4-5",
+		Input: responses.ResponseNewParamsInputUnion{
+			OfString: openai.String("Write a one-sentence bedtime story about a unicorn."),
+		},
+	})
+
+	if err != nil {
+		log.Fatalf("Failed to create response: %s", err)
+	}
+
+	fmt.Printf("Response from model: %s:\n\n%s\n", resp.Model, resp.OutputText())
+}
 
 type policyAdapter option.MiddlewareNext
 
 func (mp policyAdapter) Do(req *policy.Request) (*http.Response, error) {
-    return option.MiddlewareNext(mp)(req.Raw())
+	return option.MiddlewareNext(mp)(req.Raw())
 }
 
 func newClientUsingEntraAuthentication(baseURL string) openai.Client {
-    const scope = "https://ai.azure.com/.default"
+	const scope = "https://ai.azure.com/.default"
 
-    tokenCredential, err := azidentity.NewDefaultAzureCredential(nil)
-    if err != nil {
-        log.Fatalf("Failed to create DefaultAzureCredential: %s", err)
-    }
+	// Use DefaultAzureCredential for EntraID authentication
+	tokenCredential, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		log.Fatalf("Failed to create DefaultAzureCredential: %s", err)
+	}
 
-    bearerTokenPolicy := runtime.NewBearerTokenPolicy(tokenCredential, []string{scope}, nil)
+	bearerTokenPolicy := runtime.NewBearerTokenPolicy(tokenCredential, []string{scope}, nil)
 
-    client := openai.NewClient(
-        option.WithBaseURL(baseURL),
-        option.WithQuery("api-version", "2025-11-15-preview"),
-        option.WithMiddleware(func(req *http.Request, next option.MiddlewareNext) (*http.Response, error) {
-            pipeline := runtime.NewPipeline("claude-starter", "", runtime.PipelineOptions{}, &policy.ClientOptions{
-                InsecureAllowCredentialWithHTTP: true,
-                PerRetryPolicies: []policy.Policy{
-                    bearerTokenPolicy,
-                    policyAdapter(next),
-                },
-            })
+	// Initialize OpenAI client with Azure AI Foundry endpoint
+	client := openai.NewClient(
+		option.WithBaseURL(baseURL),
+		option.WithQuery("api-version", "2025-11-15-preview"),
+		option.WithMiddleware(func(req *http.Request, next option.MiddlewareNext) (*http.Response, error) {
+			pipeline := runtime.NewPipeline("claude-starter", "", runtime.PipelineOptions{}, &policy.ClientOptions{
+				InsecureAllowCredentialWithHTTP: true,
+				PerRetryPolicies: []policy.Policy{
+					bearerTokenPolicy,
+					policyAdapter(next),
+				},
+			})
 
-            req2, err := runtime.NewRequestFromRequest(req)
-            if err != nil {
-                return nil, err
-            }
+			req2, err := runtime.NewRequestFromRequest(req)
+			if err != nil {
+				return nil, err
+			}
 
-            return pipeline.Do(req2)
-        }),
-    )
+			return pipeline.Do(req2)
+		}),
+	)
 
-    return client
-}
-
-func main() {
-    baseURL := "https://YOUR-PROJECT.services.ai.azure.com/api/projects/YOUR-PROJECT-NAME/openai"
-
-    client := newClientUsingEntraAuthentication(baseURL)
-
-    resp, err := client.Responses.New(context.TODO(), responses.ResponseNewParams{
-        Model: "claude-sonnet-4-5",
-        Input: responses.ResponseNewParamsInputUnion{
-            OfString: openai.String("Write a one-sentence bedtime story about a unicorn."),
-        },
-    })
-
-    if err != nil {
-        log.Fatalf("Failed to create response: %s", err)
-    }
-
-    fmt.Printf("Response from model: %s:\\n\\n%s\\n", resp.Model, resp.OutputText())
+	return client
 }
 ```
 
 #### Run the Sample
 
 ```bash
-go run main.go
+cd src/go
+go run .
 ```
 
 #### Key Features
