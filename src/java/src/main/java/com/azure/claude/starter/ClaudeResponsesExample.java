@@ -40,12 +40,10 @@ public class ClaudeResponsesExample {
         System.out.println("Claude Sonnet 4.5 - Responses API with EntraID");
 
         // Get Azure token using DefaultAzureCredential
-        var azureCredential = new DefaultAzureCredentialBuilder()
-                .tenantId("db9be3ca-997b-41d0-833d-77758c24615c")
-                .build();
+        var azureCredential = new DefaultAzureCredentialBuilder().build();
 
         // Foundry endpoint configuration
-        String baseUrl = "https://rcarun-live-foundry-2-res.services.ai.azure.com/api/projects/rcarun-live-foundry-2-prj/openai";
+        String baseUrl = "https://YOUR-RESOURCE-NAME.services.ai.azure.com/api/projects/YOUR-PROJECT-NAME/openai";
         String apiVersion = "2025-11-15-preview";
         String model = "claude-sonnet-4-5";
 
@@ -55,7 +53,7 @@ public class ClaudeResponsesExample {
                 .baseUrl(baseUrl)
                 // Set the Azure Entra ID
                 .credential(BearerTokenCredential.create(bearerTokenSupplier))
-                .putQueryParam("api-version", apiVersion)
+                .azureServiceVersion(AzureOpenAIServiceVersion.fromString(apiVersion))
                 .azureUrlPathMode(AzureUrlPathMode.UNIFIED)
                 .build();
 
