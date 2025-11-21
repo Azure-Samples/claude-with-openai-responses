@@ -60,7 +60,7 @@ Choose your preferred language:
 **Status**: ✅ Fully tested and working with OpenAI SDK
 
 #### Prerequisites
-- **Python 3.8+** installed
+- **Python 3.11+** installed
 - **Dependencies**: 
   - `openai` - OpenAI Python SDK
   - `azure-identity` - Azure authentication library

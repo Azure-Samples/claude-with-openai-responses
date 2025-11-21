@@ -25,11 +25,10 @@ pip install -r requirements.txt
 
 ```bash
 # Run the Responses API example
-python claude-openai-responses2.py
+python claude-openai-responses.py
 ```
 
 ## Files
 
-- `claude-openai-responses.py` - Uses Azure AI Projects SDK
-- `claude-openai-responses2.py` - Uses OpenAI SDK directly (recommended)
+- `claude-openai-responses.py` - Uses OpenAI SDK with EntraID authentication
 - `requirements.txt` - Python dependencies
