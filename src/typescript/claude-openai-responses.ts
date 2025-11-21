@@ -19,12 +19,11 @@ async function main(): Promise<void> {
     // This automatically uses your Azure CLI login, Managed Identity, or other credential sources
     const credential = new DefaultAzureCredential();
     const scope = "https://ai.azure.com/.default";
-    const tokenProvider = getBearerTokenProvider(credential, scope);
 
     // Initialize OpenAI client with Microsoft Foundry endpoint
     const client = new OpenAI({
         baseURL: process.env.FOUNDRY_ENDPOINT,
-        apiKey: await tokenProvider(),
+        apiKey: getBearerTokenProvider(credential, scope),
         defaultQuery: { "api-version": "2025-11-15-preview" }
     });
     
