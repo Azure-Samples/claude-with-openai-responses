@@ -63,14 +63,11 @@ public class ClaudeResponsesExample {
             JsonNode output = jsonResponse.get("output");
             if (output != null && output.isArray()) {
                 for (JsonNode item : output) {
-                    if (item.has("message")) {
-                        JsonNode message = item.get("message");
-                        JsonNode content = message.get("content");
-                        if (content != null && content.isArray()) {
-                            for (JsonNode contentItem : content) {
-                                if (contentItem.has("output_text")) {
-                                    System.out.println(contentItem.get("output_text").get("text").asText());
-                                }
+                    JsonNode content = item.get("content");
+                    if (content != null && content.isArray()) {
+                        for (JsonNode contentItem : content) {
+                            if (contentItem.has("text")) {
+                                System.out.println(contentItem.get("text").asText());
                             }
                         }
                     }
