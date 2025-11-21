@@ -21,11 +21,6 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.openai</groupId>
-            <artifactId>openai-java</artifactId>
-            <version>4.8.0</version>
-        </dependency>
-        <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-identity</artifactId>
             <version>1.15.1</version>

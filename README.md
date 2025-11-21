@@ -348,16 +348,18 @@ go run main.go
   - `jackson-databind` (v2.18.2) - JSON parsing
 
 #### Implementation Approach
-⚠️ **Direct HTTP Calls Required** - OpenAI Java SDK doesn't support Microsoft Foundry query parameters for the Responses API:
+⚠️ **Direct HTTP Calls Required** - The OpenAI Java SDK's Responses API has compatibility issues with Microsoft Foundry:
 - Uses OkHttp to make direct OpenAI Responses API calls to Foundry endpoints
 - Manually constructs the Foundry endpoint URL with required `api-version` query parameter
 - Manually adds `Authorization: Bearer <token>` header for EntraID authentication
 - Manually formats the OpenAI Responses API request body and parses JSON responses
 
 **Why Direct HTTP?**
-- OpenAI Java SDK (v4.8.0) doesn't support adding query parameters required by Microsoft Foundry
-- Microsoft Foundry's OpenAI Responses API endpoint requires `api-version` as a query parameter
-- Direct HTTP allows proper formatting of the Responses API request to Foundry
+- OpenAI Java SDK (v4.8.0) supports `putAdditionalQueryParam()` for query parameters and Azure credentials
+- However, when used with Microsoft Foundry's Responses API, the SDK returns 404 errors
+- This appears to be an SDK compatibility issue with Microsoft Foundry's endpoint structure
+- Direct HTTP works reliably as a workaround until the SDK issue is resolved
+- See [Issue #4](https://github.com/Azure-Samples/claude-with-openai-responses/issues/4) for details
 
 #### Installation
 
