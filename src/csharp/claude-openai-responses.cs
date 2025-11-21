@@ -8,82 +8,83 @@
 // Uses a custom PipelinePolicy to inject both the api-version query parameter and Azure auth token
 // required by Microsoft Foundry.
 
-using System.ClientModel;
 using System.ClientModel.Primitives;
-using Azure.Core;
 using Azure.Identity;
 using OpenAI;
 using OpenAI.Responses;
 
+#nullable disable
 #pragma warning disable OPENAI001 // Responses API is in preview
 
-Console.WriteLine("Claude Sonnet 4.5 - Responses API with EntraID\n");
+Console.WriteLine("Claude Sonnet 4.5 - Responses API with EntraID");
+Console.WriteLine();
 
 // Configure OpenAI client options with Foundry endpoint
-var clientOptions = new OpenAIClientOptions
+Uri projectEndpoint = new("https://YOUR-RESOURCE-NAME.services.ai.azure.com/api/projects/YOUR-PROJECT-NAME");
+
+OpenAIClientOptions clientOptions = new()
 {
-    Endpoint = new Uri("https://YOUR-RESOURCE-NAME.services.ai.azure.com/api/projects/YOUR-PROJECT-NAME/openai"),
+    Endpoint = new Uri($"{projectEndpoint.AbsoluteUri.TrimEnd('/')}/openai"),
 };
 
-// Add custom pipeline policy to inject api-version and Azure authentication
-clientOptions.AddPolicy(new AzureFoundryPipelinePolicy(), PipelinePosition.BeforeTransport);
+// Add custom pipeline policy to inject api-version
+clientOptions.AddPolicy(new ApiVersionPipelinePolicy(), PipelinePosition.PerCall);
 
-// Create OpenAI Response client with placeholder credential (auth handled by pipeline)
-var client = new OpenAIResponseClient(
+// Create OpenAI Response client with token credential
+OpenAIResponseClient client = new(
     model: "claude-sonnet-4-5",
-    credential: new ApiKeyCredential("not-used"), // Placeholder - actual auth in pipeline
+    authenticationPolicy: new BearerTokenPolicy(new DefaultAzureCredential(), "https://ai.azure.com/.default"),
     options: clientOptions);
 
 // Create input message
-var inputItems = new List<ResponseItem>
-{
+List<ResponseItem> inputItems =
+[
     ResponseItem.CreateUserMessageItem("Write a one-sentence bedtime story about a unicorn."),
-};
+];
 
 // Configure response options
-var responseOptions = new ResponseCreationOptions
+ResponseCreationOptions responseOptions = new()
 {
     MaxOutputTokenCount = 1000,
 };
 
 // Create response
-var result = client.CreateResponse(inputItems, responseOptions);
-var response = result.Value;
+OpenAIResponse response = client.CreateResponse(inputItems, responseOptions);
 
-Console.WriteLine($"Response from model: {response.Model}:\n");
+Console.WriteLine($"Response from model: {response.Model}:");
+Console.WriteLine();
 Console.WriteLine($"{response.GetOutputText()}");
 
-#pragma warning restore OPENAI001
-
-// Custom pipeline policy to inject api-version query parameter and Azure authentication
-internal partial class AzureFoundryPipelinePolicy : PipelinePolicy
+// Custom pipeline policy to inject api-version query parameter
+internal partial class ApiVersionPipelinePolicy : PipelinePolicy
 {
-    private static readonly DefaultAzureCredential _credential = new();
-    private static readonly string _scope = "https://ai.azure.com/.default";
+    private readonly string _apiVersion;
+
+    public ApiVersionPipelinePolicy(string apiVersion = "2025-11-15-preview")
+    {
+        _apiVersion = apiVersion;
+    }
 
     public override void Process(PipelineMessage message, IReadOnlyList<PipelinePolicy> pipeline, int currentIndex)
     {
-        // Add api-version query parameter
-        var uri = message.Request.Uri?.ToString() ?? string.Empty;
-        message.Request.Uri = new Uri(uri + (uri.Contains('?') ? "&" : "?") + "api-version=2025-11-15-preview");
-        
-        // Add Azure authentication token
-        var token = _credential.GetToken(new TokenRequestContext([_scope]), default);
-        message.Request.Headers.Set("Authorization", $"Bearer {token.Token}");
-        
+        AddApiVersion(message.Request);        
         ProcessNext(message, pipeline, currentIndex);
     }
 
     public override async ValueTask ProcessAsync(PipelineMessage message, IReadOnlyList<PipelinePolicy> pipeline, int currentIndex)
     {
-        // Add api-version query parameter
-        var uri = message.Request.Uri?.ToString() ?? string.Empty;
-        message.Request.Uri = new Uri(uri + (uri.Contains('?') ? "&" : "?") + "api-version=2025-11-15-preview");
-        
-        // Add Azure authentication token
-        var token = await _credential.GetTokenAsync(new TokenRequestContext([_scope]), default);
-        message.Request.Headers.Set("Authorization", $"Bearer {token.Token}");
-        
+        AddApiVersion(message.Request);
         await ProcessNextAsync(message, pipeline, currentIndex);
+    }
+
+    private void AddApiVersion(PipelineRequest request)
+    {
+        if (request?.Uri?.Query?.ToLowerInvariant()?.Contains("api-version=") == false)
+        {
+            UriBuilder builder = new(request.Uri);
+            char separator = builder.Query?.Length > 0 ? '&' : '?';
+            builder.Query = $"{builder.Query}{separator}api-version={_apiVersion}";
+            request.Uri = builder.Uri;
+        }
     }
 }
