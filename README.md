@@ -50,7 +50,7 @@ Choose your preferred language:
 - [TypeScript](#typescript) - Full OpenAI SDK support
 - [Go](#go) - OpenAI SDK with custom middleware
 - [Java](#java) - Direct HTTP implementation
-- [C#](#csharp) - Direct HTTP implementation
+- [C#](#csharp) - OpenAI SDK with custom pipeline policy
 
 ---
 
@@ -466,92 +466,111 @@ mvn clean compile exec:java
 <details id="csharp">
 <summary><h3>#️⃣ C#</h3></summary>
 
-**Status**: ⚠️ Code pattern correct, uses direct HTTP calls
+**Status**: ✅ Fully working with OpenAI SDK and custom pipeline policy
 
 #### Prerequisites
 - **.NET 6+** installed
 - **Dependencies**:
   - `Azure.Identity` (v1.*) - Azure authentication library
-  - Uses direct HTTP calls (no OpenAI SDK dependency)
+  - `OpenAI` (v2.*) - OpenAI .NET SDK
 
 #### Implementation Approach
-⚠️ **Direct HTTP Calls Required** - OpenAI C# SDK doesn't support Microsoft Foundry query parameters for the Responses API:
-- Uses HttpClient to make direct OpenAI Responses API calls to Foundry endpoints
-- Manually constructs the Foundry endpoint URL with required `api-version` query parameter
-- Manually adds `Authorization: Bearer <token>` header for EntraID authentication
-- Manually formats the OpenAI Responses API request body and parses JSON responses
+✅ **OpenAI SDK with Custom Pipeline Policy** - Uses the OpenAI .NET SDK with a custom `PipelinePolicy`:
+- Creates a custom `PipelinePolicy` to inject the `api-version` query parameter required by Microsoft Foundry
+- Same pipeline policy adds Azure authentication token from `DefaultAzureCredential`
+- Uses native OpenAI SDK types and methods for the Responses API
+- Clean, type-safe implementation with SDK benefits
 
-**Why Direct HTTP?**
-- OpenAI C# SDK doesn't support custom query parameters for Foundry endpoints
-- Microsoft Foundry's OpenAI Responses API endpoint requires `api-version` as a query parameter
-- Direct HTTP allows proper formatting of the Responses API request to Foundry
+**How It Works:**
+- Custom `AzureFoundryPipelinePolicy` class extends `PipelinePolicy`
+- Intercepts HTTP requests before they're sent
+- Adds `?api-version=2025-11-15-preview` to the request URI
+- Injects `Authorization: Bearer <token>` header with Azure token
+- Allows using OpenAI SDK with Microsoft Foundry endpoints
 
 #### Configuration
 
 Update the endpoint in `claude-openai-responses.cs`:
 
 ```csharp
-var endpoint = "https://YOUR-PROJECT.services.ai.azure.com/api/projects/YOUR-PROJECT-NAME/openai/responses?api-version=2025-11-15-preview";
-var model = "claude-sonnet-4-5";  // Your Claude deployment name
+var clientOptions = new OpenAIClientOptions
+{
+    Endpoint = new Uri("https://YOUR-RESOURCE-NAME.services.ai.azure.com/api/projects/YOUR-PROJECT-NAME/openai"),
+};
 ```
 
 #### Code Sample
 
 ```csharp
-using System.Text;
-using System.Text.Json;
+using System.ClientModel;
+using System.ClientModel.Primitives;
 using Azure.Core;
 using Azure.Identity;
+using OpenAI;
+using OpenAI.Responses;
 
-var endpoint = "https://YOUR-PROJECT.services.ai.azure.com/api/projects/YOUR-PROJECT-NAME/openai/responses?api-version=2025-11-15-preview";
+#pragma warning disable OPENAI001 // Responses API is in preview
 
-// Use DefaultAzureCredential for EntraID authentication
-var credential = new DefaultAzureCredential();
-var tokenRequestContext = new TokenRequestContext(["https://ai.azure.com/.default"]);
-var token = await credential.GetTokenAsync(tokenRequestContext);
-
-// Create HTTP client
-using var httpClient = new HttpClient();
-
-// Create request body
-var jsonBody = """
+// Configure OpenAI client options with Foundry endpoint
+var clientOptions = new OpenAIClientOptions
 {
-    "model": "claude-sonnet-4-5",
-    "input": "Write a one-sentence bedtime story about a unicorn.",
-    "max_output_tokens": 1000
-}
-""";
+    Endpoint = new Uri("https://YOUR-RESOURCE-NAME.services.ai.azure.com/api/projects/YOUR-PROJECT-NAME/openai"),
+};
 
-var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+// Add custom pipeline policy to inject api-version and Azure authentication
+clientOptions.AddPolicy(new AzureFoundryPipelinePolicy(), PipelinePosition.BeforeTransport);
 
-// Add authorization header
-httpClient.DefaultRequestHeaders.Authorization = 
-    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token.Token);
+// Create OpenAI Response client
+var client = new OpenAIResponseClient(
+    model: "claude-sonnet-4-5",
+    credential: new ApiKeyCredential("not-used"), // Placeholder - actual auth in pipeline
+    options: clientOptions);
 
-// Make the request
-var response = await httpClient.PostAsync(endpoint, content);
-
-if (response.IsSuccessStatusCode)
+// Create input message
+var inputItems = new List<ResponseItem>
 {
-    var responseBody = await response.Content.ReadAsStringAsync();
-    
-    using var doc = JsonDocument.Parse(responseBody);
-    var root = doc.RootElement;
-    
-    Console.WriteLine($"Response from model: {root.GetProperty("model").GetString()}");
-    
-    // Navigate: output[0].content[0].text
-    var output = root.GetProperty("output");
-    if (output.GetArrayLength() > 0)
+    ResponseItem.CreateUserMessageItem("Write a one-sentence bedtime story about a unicorn."),
+};
+
+// Configure response options
+var responseOptions = new ResponseCreationOptions
+{
+    MaxOutputTokenCount = 1000,
+};
+
+// Create response
+var result = client.CreateResponse(inputItems, responseOptions);
+var response = result.Value;
+
+Console.WriteLine($"Response from model: {response.Model}:\n");
+Console.WriteLine($"{response.GetOutputText()}");
+
+// Custom pipeline policy to inject api-version and Azure authentication
+internal partial class AzureFoundryPipelinePolicy : PipelinePolicy
+{
+    private static readonly DefaultAzureCredential _credential = new();
+    private static readonly string _scope = "https://ai.azure.com/.default";
+
+    public override void Process(PipelineMessage message, IReadOnlyList<PipelinePolicy> pipeline, int currentIndex)
     {
-        var message = output[0];
-        var contentArray = message.GetProperty("content");
-        if (contentArray.GetArrayLength() > 0)
-        {
-            var contentItem = contentArray[0];
-            var text = contentItem.GetProperty("text").GetString();
-            Console.WriteLine(text);
-        }
+        var uri = message.Request.Uri?.ToString() ?? string.Empty;
+        message.Request.Uri = new Uri(uri + (uri.Contains('?') ? "&" : "?") + "api-version=2025-11-15-preview");
+        
+        var token = _credential.GetToken(new TokenRequestContext([_scope]), default);
+        message.Request.Headers.Set("Authorization", $"Bearer {token.Token}");
+        
+        ProcessNext(message, pipeline, currentIndex);
+    }
+
+    public override async ValueTask ProcessAsync(PipelineMessage message, IReadOnlyList<PipelinePolicy> pipeline, int currentIndex)
+    {
+        var uri = message.Request.Uri?.ToString() ?? string.Empty;
+        message.Request.Uri = new Uri(uri + (uri.Contains('?') ? "&" : "?") + "api-version=2025-11-15-preview");
+        
+        var token = await _credential.GetTokenAsync(new TokenRequestContext([_scope]), default);
+        message.Request.Headers.Set("Authorization", $"Bearer {token.Token}");
+        
+        await ProcessNextAsync(message, pipeline, currentIndex);
     }
 }
 ```
@@ -565,9 +584,9 @@ dotnet run claude-openai-responses.cs
 
 #### Key Features
 - Uses Azure DefaultAzureCredential for EntraID authentication
-- Native .NET HttpClient for HTTP requests
-- System.Text.Json for JSON parsing
-- C# 12 features like raw string literals
+- OpenAI SDK for type-safe API access
+- Custom pipeline policy for Microsoft Foundry compatibility
+- Clean integration between Azure Identity and OpenAI SDK
 
 </details>
 
