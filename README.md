@@ -351,7 +351,7 @@ go run .
 - Uses `AuthenticationUtil.getBearerTokenSupplier` for EntraID authentication
 - Pass bearer token credential to the OpenAI client configured with Foundry endpoint
 - SDK handles the OpenAI Responses API protocol and token refresh automatically
-- Uses `putQueryParam` to add required `api-version` parameter
+- Uses `azureServiceVersion` and `azureUrlPathMode(AzureUrlPathMode.UNIFIED)` for Azure-specific configuration
 
 #### Installation
 
@@ -406,7 +406,8 @@ public class ClaudeResponsesExample {
         OpenAIClient client = OpenAIOkHttpClient.builder()
                 .baseUrl(baseUrl)
                 .credential(BearerTokenCredential.create(bearerTokenSupplier))
-                .putQueryParam("api-version", apiVersion)
+                .azureServiceVersion(AzureOpenAIServiceVersion.fromString(apiVersion))
+                .azureUrlPathMode(AzureUrlPathMode.UNIFIED)
                 .build();
 
         ResponseCreateParams responseCreateParams = ResponseCreateParams.builder()
@@ -417,7 +418,7 @@ public class ClaudeResponsesExample {
 
         Response response = client.responses().create(responseCreateParams);
 
-        System.out.println("Response from model: " + model);
+        System.out.println("Response from model: " + response.model().asString());
         System.out.println(response.output());
     }
 }

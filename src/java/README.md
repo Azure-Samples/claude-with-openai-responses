@@ -40,7 +40,8 @@ Supplier<String> bearerTokenSupplier = AuthenticationUtil.getBearerTokenSupplier
 OpenAIClient client = OpenAIOkHttpClient.builder()
     .baseUrl(baseUrl)
     .credential(BearerTokenCredential.create(bearerTokenSupplier))
-    .putQueryParam("api-version", apiVersion)
+    .azureServiceVersion(AzureOpenAIServiceVersion.fromString(apiVersion))
+    .azureUrlPathMode(AzureUrlPathMode.UNIFIED)
     .build();
 ResponseCreateParams responseCreateParams = ResponseCreateParams.builder()
     .model(ResponsesModel.ofString(model))
@@ -48,7 +49,8 @@ ResponseCreateParams responseCreateParams = ResponseCreateParams.builder()
     .maxOutputTokens(1000)
     .build();
 Response response = client.responses().create(responseCreateParams);
-System.out.println("Response from model: " + model + " : " + response.output());
+System.out.println("Response from model: " + response.model().asString());
+System.out.println(response.output());
 // ...existing code...
 ```
 
