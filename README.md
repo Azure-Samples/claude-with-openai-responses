@@ -1,4 +1,22 @@
-# Using OpenAI Responses API with Claude Models on Microsoft Foundry
+<!--
+---
+page_type: sample
+languages:
+- python
+- typescript
+- go
+- csharp
+- java
+products:
+- azure-openai
+- azure-ai-foundry
+- azure
+urlFragment: claude-with-openai-responses
+name: Claude Models with OpenAI Responses API
+description: Multi language code samples demonstrating how to use the OpenAI Responses API with Claude models hosted in Microsoft Foundry with keyless authentication
+---
+-->
+# Use Claude Models with OpenAI Responses API in Microsoft Foundry  
 
 Multi-language code samples demonstrating how to use the **OpenAI Responses API** to interact with **Claude models** (Sonnet 4.5, Haiku 4.5, Opus 4.1) hosted in **Microsoft Foundry** with EntraID (keyless) authentication.
 
