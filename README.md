@@ -45,7 +45,7 @@ Before using any language sample, you need:
 
 2. **Microsoft Foundry Project** with Claude model deployed
    - Create a [Microsoft Foundry project](https://learn.microsoft.com/en-us/azure/ai-foundry/how-to/create-projects?view=foundry-classic) in one of the supported regions: **East US 2** or **Sweden Central**
-   - Deploy a Claude model (Sonnet 4.5, Haiku 4.5, or Opus 4.1) following the [deployment guide](https://learn.microsoft.com/azure/ai-foundry/foundry-models/how-to/generate-responses?view=foundry-classic&tabs=python)
+   - Deploy a Claude model (Sonnet 4.5, Haiku 4.5, or Opus 4.1) following the [deployment guide](https://learn.microsoft.com/en-us/azure/ai-foundry/foundry-models/how-to/use-foundry-models-claude?view=foundry&tabs=python)
    - Note your OpenAI Responses API endpoint URL (format: `https://<project>.services.ai.azure.com/api/projects/<project-name>/openai`)
 
 3. **Azure Marketplace Access** 
