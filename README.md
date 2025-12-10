@@ -18,7 +18,12 @@ description: Multi language code samples demonstrating how to use the OpenAI Res
 -->
 # Use Claude Models with OpenAI Responses API in Microsoft Foundry  
 
-Multi-language code samples demonstrating how to use the **OpenAI Responses API** to interact with **Claude models** (Sonnet 4.5, Haiku 4.5, Opus 4.1) hosted in **Microsoft Foundry** with EntraID (keyless) authentication.
+Multi-language code samples demonstrating how to use the **OpenAI Responses API** to interact with **Claude models** (Sonnet 4.5, Haiku 4.5, Opus 4.5) hosted in **Microsoft Foundry** with EntraID (keyless) authentication.
+
+## Architecture Overview
+
+![Claude with OpenAI Responses Architecture](./images/claude.png)
+
 
 ## ⚠️ Important: Claude Model Availability on Microsoft Foundry
 
